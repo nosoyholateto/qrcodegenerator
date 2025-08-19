@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QR Minimal — Generador</title>
+  <style>
+    :root {
+      --bg: #0b0c0f;
+      --card: #11131a;
+      --muted: #2a2f3a;
+      --text: #e8e9ed;
+      --subtext: #a6adbb;
+      --accent: #6ae3ff;
+      --focus: #89f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      display: grid; min-height: 100dvh; place-items: center; padding: 24px;
+    }
+    .wrap {
+      width: min(980px, 100%); display: grid; gap: 16px;
+      grid-template-columns: 1.2fr 1fr;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--muted);
+      border-radius: 16px; padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.02);
+    }
+    h1 { font-size: 20px; margin: 0 0 12px; letter-spacing: .3px; }
+    .row { display: grid; gap: 10px; margin-bottom: 12px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    label { font-size: 12px; color: var(--subtext); }
+    input[type="text"] {
+      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--muted);
+      background: #0e1118; color: var(--text); outline: none;
+    }
+    input[type="text"]::placeholder { color: #7d8597; }
+    input[type="text"]:focus, select:focus, input[type="range"]:focus, input[type="color"]:focus {
+      outline: 2px solid var(--focus); outline-offset: 1px; border-color: transparent;
+    }
+    select, input[type="number"], input[type="range"], input[type="color"] {
+      width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--muted);
+      background: #0e1118; color: var(--text);
+    }
+    .range-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+    .buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      appearance: none; border: 1px solid var(--muted); background: #10131a; color: var(--text);
+      padding: 10px 14px; border-radius: 12px; cursor: pointer; font-weight: 600;
+    }
+    button.primary { background: var(--accent); color: #00222a; border-color: transparent; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .preview {
+      display: grid; place-items: center; min-height: 420px;
+      border-radius: 16px; border: 1px dashed var(--muted);
+      background: #0c0f15; padding: 16px;
+    }
+    .qr-pad {
+      display: inline-grid; place-items: center;
+      border-radius: 12px;
+    }
+    .hint { font-size: 12px; color: var(--subtext); margin-top: 6px; }
+    .footer { text-align: center; color: var(--subtext); font-size: 12px; margin-top: 8px; }
+    @media (max-width: 860px) {
+      .wrap { grid-template-columns: 1fr; }
+      .preview { min-height: 360px; }
+    }
+  </style>
+
+  <!-- QRCode.js (davidshimjs) - CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>Generador de Códigos QR</h1>
+
+      <div class="row">
+        <label for="text">Contenido</label>
+        <input id="text" type="text" placeholder="Escribe una URL, texto, Wi-Fi, etc. (Enter para generar)" />
+        <div class="hint">Tip: pega con <kbd>Ctrl/Cmd + V</kbd> o presiona Enter para generar al instante.</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="row">
+          <label for="size">Tamaño (px)</label>
+          <div class="range-row">
+            <input id="size" type="range" min="128" max="1024" step="32" value="320" />
+            <input id="sizeNum" type="number" min="128" max="1024" step="32" value="320" />
+          </div>
+        </div>
+        <div class="row">
+          <label for="ecc">Corrección de errores</label>
+          <select id="ecc">
+            <option value="M">M (15%)</option>
+            <option value="L">L (7%)</option>
+            <option value="Q">Q (25%)</option>
+            <option value="H">H (30%)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="row">
+          <label for="fg">Color principal</label>
+          <input id="fg" type="color" value="#000000" />
+        </div>
+        <div class="row">
+          <label for="bg">Color de fondo</label>
+          <input id="bg" type="color" value="#ffffff" />
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="margin">Margen exterior (simulado)</label>
+        <div class="range-row">
+          <input id="margin" type="range" min="0" max="48" step="2" value="12" />
+          <input id="marginNum" type="number" min="0" max="48" step="2" value="12" />
+        </div>
+        <div class="hint">El margen se simula con un "padding" alrededor del QR para un look limpio.</div>
+      </div>
+
+      <div class="buttons">
+        <button class="primary" id="btnGen">Generar QR</button>
+        <button id="btnClear">Limpiar</button>
+        <button id="btnDownload" disabled>Descargar PNG</button>
+        <button id="btnCopy" disabled>Copiar imagen</button>
+      </div>
+      <div class="footer">Diseño minimalista. Todo se procesa en tu navegador.</div>
+    </section>
+
+    <section class="card preview" id="preview">
+      <div id="qrPad" class="qr-pad" style="padding:12px;background:#ffffff;">
+        <div id="qrcode"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Esperar a que cargue la librería (defer) y el DOM
+    window.addEventListener('DOMContentLoaded', () => {
+      // UI refs
+      const $ = (s) => document.querySelector(s);
+      const text = $('#text');
+      const size = $('#size');
+      const sizeNum = $('#sizeNum');
+      const fg = $('#fg');
+      const bg = $('#bg');
+      const ecc = $('#ecc');
+      const margin = $('#margin');
+      const marginNum = $('#marginNum');
+      const btnGen = $('#btnGen');
+      const btnClear = $('#btnClear');
+      const btnDownload = $('#btnDownload');
+      const btnCopy = $('#btnCopy');
+
+      const qrWrap = $('#qrcode');
+      const qrPad = $('#qrPad');
+
+      let qr = null;
+
+      function valid() {
+        return (text.value || '').trim().length > 0;
+      }
+
+      function syncRange(a, b) { // range <-> number
+        a.addEventListener('input', () => { b.value = a.value; });
+        b.addEventListener('input', () => { a.value = b.value; });
+      }
+      syncRange(size, sizeNum);
+      syncRange(margin, marginNum);
+
+      function createQR() {
+        if (!window.QRCode) {
+          alert('No se pudo cargar la librería de QR. Revisa tu conexión.');
+          return;
+        }
+        qrWrap.innerHTML = ''; // limpiar previo
+        const s = clamp(parseInt(size.value, 10), 128, 1024);
+        const options = {
+          text: text.value || '',
+          width: s,
+          height: s,
+          colorDark: fg.value || '#000000',
+          colorLight: bg.value || '#ffffff',
+          correctLevel: QRCode.CorrectLevel[ecc.value] || QRCode.CorrectLevel.M
+        };
+        // Padding simulado como margen exterior (quiet zone extendida visual)
+        qrPad.style.padding = `${clamp(parseInt(margin.value,10),0,48)}px`;
+        qrPad.style.background = options.colorLight;
+
+        qr = new QRCode(qrWrap, options);
+
+        // Habilitar acciones si hay contenido
+        const enabled = valid();
+        btnDownload.disabled = !enabled;
+        btnCopy.disabled = !enabled;
+      }
+
+      function clamp(n, a, b){ return Math.min(Math.max(n, a), b); }
+
+      function downloadPNG() {
+        const canvas = qrWrap.querySelector('canvas');
+        if (!canvas) return alert('Genera un QR primero.');
+        // Crear un canvas combinado que incluya el padding/margen
+        const pad = parseInt(getComputedStyle(qrPad).padding) || 0;
+        const s = canvas.width;
+        const out = document.createElement('canvas');
+        out.width = s + pad*2;
+        out.height = s + pad*2;
+        const ctx = out.getContext('2d');
+        // fondo
+        ctx.fillStyle = bg.value || '#ffffff';
+        ctx.fillRect(0,0,out.width,out.height);
+        // dibujar QR centrado
+        ctx.drawImage(canvas, pad, pad);
+        // descargar
+        const url = out.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url;
+        const safeName = (text.value || 'qr').slice(0,64).replace(/[^\w\-]+/g,'_');
+        a.download = `QR_${safeName || 'code'}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      async function copyImage() {
+        const canvas = qrWrap.querySelector('canvas');
+        if (!canvas || !navigator.clipboard || !window.ClipboardItem) {
+          return alert('Tu navegador no soporta copiar imágenes al portapapeles.');
+        }
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          btnCopy.textContent = '¡Copiado!';
+          setTimeout(() => btnCopy.textContent = 'Copiar imagen', 1200);
+        } catch (e) {
+          alert('No se pudo copiar la imagen: ' + e.message);
+        }
+      }
+
+      function clearAll() {
+        text.value = '';
+        qrWrap.innerHTML = '';
+        btnDownload.disabled = true;
+        btnCopy.disabled = true;
+      }
+
+      // Eventos
+      btnGen.addEventListener('click', createQR);
+      btnClear.addEventListener('click', clearAll);
+      btnDownload.addEventListener('click', downloadPNG);
+      btnCopy.addEventListener('click', copyImage);
+
+      text.addEventListener('keydown', (e) => { if (e.key === 'Enter') createQR(); });
+      [size, sizeNum, fg, bg, ecc, margin, marginNum].forEach(el => {
+        el.addEventListener('change', () => { if (valid()) createQR(); });
+        el.addEventListener('input', () => { /* respuesta rápida mientras ajusta */ });
+      });
+
+      // Si hay texto al cargar (marcadores), generar
+      if (valid()) createQR();
+
+      // Acceso rápido: pegar para autogenerar
+      window.addEventListener('paste', (e) => {
+        if (!valid()) {
+          const p = (e.clipboardData || window.clipboardData).getData('text');
+          if (p) { text.value = p; createQR(); }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
